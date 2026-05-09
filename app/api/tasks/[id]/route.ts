@@ -5,12 +5,12 @@ import { getCurrentUser } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/response'
 import { eq } from 'drizzle-orm'
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const currentUser = await getCurrentUser()
     if (!currentUser) return errorResponse('Not authenticated', 401)
 
-    const task = await db.select().from(tasks).where(eq(tasks.id, params.id))
+    const task = await db.select().from(tasks).where(eq(tasks.id, (await params).id))
     if (task.length === 0) return errorResponse('Task not found', 404)
 
     const project = await db.select().from(projects).where(eq(projects.id, task[0].projectId))
@@ -34,7 +34,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         assignedTo: assignedTo || null,
         updatedAt: new Date(),
       })
-      .where(eq(tasks.id, params.id))
+      .where(eq(tasks.id, (await params).id))
       .returning()
 
     return successResponse({ task: updated[0] })
@@ -44,12 +44,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const currentUser = await getCurrentUser()
     if (!currentUser) return errorResponse('Not authenticated', 401)
 
-    const task = await db.select().from(tasks).where(eq(tasks.id, params.id))
+    const task = await db.select().from(tasks).where(eq(tasks.id, (await params).id))
     if (task.length === 0) return errorResponse('Task not found', 404)
 
     const project = await db.select().from(projects).where(eq(projects.id, task[0].projectId))
@@ -57,7 +57,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       return errorResponse('Forbidden', 403)
     }
 
-    await db.delete(tasks).where(eq(tasks.id, params.id))
+    await db.delete(tasks).where(eq(tasks.id, (await params).id))
 
     return successResponse({ message: 'Task deleted' })
   } catch (err) {
